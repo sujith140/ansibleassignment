@@ -1,0 +1,183 @@
+-  hosts: allservers
+   become: yes
+   tasks:
+     -  name: fail if unsupported os
+        fail:
+          msg: This playbook runs only on Debian and Redhat
+        when: ansible_facts['os_family'] != "Debian" and ansible_facts['os_family'] != "RedHat"
+     -  name: installing packages
+        package:
+          name: "{{ item }}"   
+          state: present
+        loop: "{{ packages }}"
+     -  name: Download the source to temp folder
+        get_url:
+          dest: "{{ nagios_code_location }}"
+          url: "https://github.com/NagiosEnterprises/nagioscore/archive/nagios-{{ nagios_version }}.tar.gz"  
+     -  name: untar the code
+        unarchive:
+          src: "{{ nagios_code_location }}"
+          dest: "/tmp/"
+          remote_src: yes 
+     -  name: check iwashere1 exists
+        stat:
+          path: /tmp/iwashere1.txt
+        register: iwashere1
+     -  name: check iwashere2 exists
+        stat:
+          path: /tmp/iwashere2.txt
+        register: iwashere2
+     -  name: check iwashere3 exists
+        stat:
+          path: /tmp/iwashere3.txt
+        register: iwashere3
+     -  name: check iwashere4 exists
+        stat:
+          path: /tmp/iwashere4.txt
+        register: iwashere4
+     -  name: check iwashere5 exists
+        stat:
+          path: /tmp/iwashere5.txt
+        register: iwashere5
+     -  name: check iwashere6 exists
+        stat:
+          path: /tmp/iwashere6.txt
+        register: iwashere6
+     -  name: check iwashere7 exists
+        stat:
+          path: /tmp/iwashere7.txt
+        register: iwashere7
+     -  name: check iwashere8 exists
+        stat:
+          path: /tmp/iwashere8.txt
+        register: iwashere8
+     -  name: Compile Code
+        shell:
+          cmd: "{{ compile_code }}"
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/"
+        notify:
+          - create flag1
+        when: iwashere1.stat.exists == False     
+     -  name: Create User and Group
+        shell:
+          cmd: sudo make install-groups-users > installgroups.log && sudo usermod -a -G nagios "{{ group }}" > usermod.log
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/"
+        notify:
+          - create flag2
+        when: iwashere2.stat.exists == False     
+     -  name: Install Binaries
+        shell:
+          cmd: sudo make install > makeinstall.log
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/"
+        notify:
+          - create flag3
+        when: iwashere3.stat.exists == False     
+     -  name: Install Service / Daemon
+        shell:
+          cmd: sudo make install-daemoninit > daemoninit.log
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/" 
+        notify:
+          - create flag4
+        when: iwashere4.stat.exists == False     
+     -  name: Install Command Mode
+        shell:
+          cmd: sudo make install-commandmode > commandmode.log
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/"
+        notify:
+          - create flag5
+        when: iwashere5.stat.exists == False     
+     -  name: Install Configuration Files
+        shell:
+          cmd: sudo make install-config > config.log
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/"
+        notify:
+          - create flag6
+        when: iwashere6.stat.exists == False     
+     -  name: Install Apache Config Files
+        shell:
+          cmd: "{{ apache_config }}"
+        args:
+          chdir: "/tmp/nagioscore-nagios-{{ nagios_version }}/"
+        notify:
+          - create flag7
+        when: iwashere7.stat.exists == False     
+     -  name: Install latest passlib with pip
+        pip:
+          name: passlib
+     -  name: Create nagiosadmin user account
+        htpasswd:
+          path: /usr/local/nagios/etc/htpasswd.users 
+          name: nagiosadmin
+          password: nagiosadmin
+        notify:
+          -  enable and restart apache
+          -  enable and restart nagios
+     -  name: Download the plugin to temp folder
+        get_url:
+          dest: "{{ nagios_plugin_location }}"
+          url: "https://github.com/nagios-plugins/nagios-plugins/archive/release-{{ nagios_plugin_version }}.tar.gz"
+     -  name: untar the plugin code
+        unarchive:
+          src: "{{ nagios_plugin_location }}"
+          dest: "/tmp/"
+          remote_src: yes
+     -  name: Compile + Install
+        shell:
+          cmd: sudo ./tools/setup > setup.log && sudo ./configure > configue.log && sudo make > make.log && sudo make install
+        args:
+          chdir: "/tmp/nagios-plugins-release-{{ nagios_plugin_version }}/"
+        notify:
+          -  enable and restart apache
+          -  enable and restart nagios
+          -  create flag8
+        when: iwashere8.stat.exists == False     
+   handlers:
+     -  name: enable and restart apache
+        service:
+          name: "{{ package_name }}"
+          enabled: yes 
+          state: restarted  
+     -  name: enable and restart nagios    
+        service:
+          name: nagios
+          enabled: yes
+          state: restarted
+     -  name: create flag1
+        file: 
+          path: "/tmp/iwashere1.txt"
+          state: touch
+     -  name: create flag2
+        file:
+          path: "/tmp/iwashere2.txt"
+          state: touch     
+     -  name: create flag3
+        file:
+          path: "/tmp/iwashere3.txt"
+          state: touch     
+     -  name: create flag4
+        file:
+          path: "/tmp/iwashere4.txt"
+          state: touch     
+     -  name: create flag5
+        file:
+          path: "/tmp/iwashere5.txt"
+          state: touch     
+     -  name: create flag6
+        file:
+          path: "/tmp/iwashere6.txt"
+          state: touch     
+     -  name: create flag7
+        file:
+          path: "/tmp/iwashere7.txt"
+          state: touch     
+     -  name: create flag8
+        file:
+          path: "/tmp/iwashere8.txt"
+          state: touch
+
